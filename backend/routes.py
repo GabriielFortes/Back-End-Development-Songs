@@ -1,4 +1,3 @@
-from . import app
 import os
 import json
 import pymongo
@@ -9,19 +8,18 @@ from pymongo.errors import OperationFailure
 from pymongo.results import InsertOneResult
 from bson.objectid import ObjectId
 import sys
+from . import app
 
 SITE_ROOT = os.path.realpath(os.path.dirname(__file__))
 json_url = os.path.join(SITE_ROOT, "data", "songs.json")
-songs_list: list = json.load(open(json_url))
+with open(json_url) as f:
+    songs_list: list = json.load(f)
 
-#client = MongoClient(
-#    f"mongodb://{app.config['MONGO_USERNAME']}:{app.config['MONGO_PASSWORD']}@localhost")
-mongodb_service = os.environ.get('MONGODB_SERVICE')
-mongodb_username = os.environ.get('MONGODB_USERNAME')
-mongodb_password = os.environ.get('MONGODB_PASSWORD')
-mongodb_port = os.environ.get('MONGODB_PORT')
-
-print(f'The value of MONGODB_SERVICE is: {mongodb_service}')
+# MongoDB connection, use your own credentials. host.docker.internal > redirects to the host machine from a Docker container.
+mongodb_service = os.environ.get('MONGODB_SERVICE', 'mongodb')
+mongodb_username = os.environ.get('MONGODB_USERNAME', 'admin')
+mongodb_password = os.environ.get('MONGODB_PASSWORD', 'admin')
+mongodb_port = os.environ.get('MONGODB_PORT', '27017')
 
 if mongodb_service == None:
     app.logger.error('Missing MongoDB server in the MONGODB_SERVICE variable')
@@ -29,54 +27,68 @@ if mongodb_service == None:
     sys.exit(1)
 
 if mongodb_username and mongodb_password:
-    url = f"mongodb://{mongodb_username}:{mongodb_password}@{mongodb_service}"
+    URL = f"mongodb://{mongodb_username}:{mongodb_password}@{mongodb_service}:{mongodb_port}/api_concerts_songs?authSource=admin"
+    print(f"Using MongoDB user: {mongodb_username}")
+    print(f"MongoDB URL: {URL}")
 else:
-    url = f"mongodb://{mongodb_service}"
-
-
-print(f"connecting to url: {url}")
+    URL = f"mongodb://{mongodb_service}:{mongodb_port}"
+    print(f"Using MongoDB user: {mongodb_username}")
+    print(f"MongoDB URL: {URL}")
 
 try:
-    client = MongoClient(url)
+    client = MongoClient(URL, serverSelectionTimeoutMS=5000)
+    client.admin.command('ping')
+    app.logger.info("Connected to MongoDB successfully.")
 except OperationFailure as e:
     app.logger.error(f"Authentication error: {str(e)}")
+    sys.exit(1)
+except Exception as e:
+    app.logger.error(f"MongoDB connection error: {str(e)}")
+    sys.exit(1)
 
-db = client.songs
-db.songs.drop()
-db.songs.insert_many(songs_list)
+try:
+    db = client.api_concerts_songs
+    db.api_concerts_songs.drop()
+    db.api_concerts_songs.insert_many(songs_list)
+except Exception as e:
+    app.logger.error(f"Error inserting initial data: {str(e)}")
+    sys.exit(1)
+
 
 def parse_json(data):
     return json.loads(json_util.dumps(data))
 
 
-######################################################################
-# INSERT CODE HERE
-######################################################################
 @app.route("/health", methods=["GET"])
 def health():
+    """Health check endpoint to verify if the service is running."""
     return jsonify(dict(status="OK")), 200
 
 
 @app.route("/count", methods=["GET"])
 def count_song():
-    count_songs = db.songs.count_documents({})
+    """Endpoint to count the number of songs in the database."""
+    count_songs = db.api_concerts_songs.count_documents({})
     return {"songs": count_songs}, 200
 
 
 @app.route("/songs", methods=["GET"])
 def get_songs():
-    songs = db.songs.find({})
+    """Endpoint to retrieve all songs from the database."""
+    songs = db.api_concerts_songs.find({})
     return jsonify(parse_json(songs)), 200
 
 
 @app.route("/song/<int:id>", methods=["GET"])
 def get_song(id):
-    song = db.songs.find({"id": id})
+    """Endpoint to retrieve a specific song by its ID."""
+    song = db.api_concerts_songs.find({"id": id})
     return jsonify(parse_json(song))
 
 
 @app.route("/song", methods=["POST"])
 def post_song():
+    """Endpoint to add a new song to the database."""
     json_request = request.get_json()
 
     if not json_request:
@@ -90,20 +102,20 @@ def post_song():
                 "title": json_request['title'],
                 "lyrics": json_request['lyrics'],
             }
-            
-            db_post = db.songs.insert_one(document_song)
+            db_post = db.api_concerts_songs.insert_one(document_song)
             return {"insert id": str(db_post.inserted_id)}, 201
     return {"message": f"music with id {json_request['id']} already exists!"}, 302
 
 
 @app.route("/song/<int:id>", methods=["PUT"])
 def put_song(id):
+    """Endpoint to update an existing song by its ID."""
     json_request = request.get_json()
 
     if not json_request:
         return {"message": "Content not found"}, 400
 
-    db_document_song = db.songs.find_one({"id": id})
+    db_document_song = db.api_concerts_songs.find_one({"id": id})
 
     if db_document_song is not None:
         song_update = db.songs.find_one({"id": id})
@@ -111,7 +123,7 @@ def put_song(id):
         keys = ['title', 'lyrics']
         if {k: json_request[k] for k in keys} == {k: json_song_update[k] for k in keys}: 
             return {"message": "song found, but nothing updated"}, 200
-
+        
         document_song = {
                 "$set": {
                     "title": json_request['title'],
@@ -119,8 +131,8 @@ def put_song(id):
                 }
             }
 
-        db.songs.update_one({"id": id}, document_song)
-        song_updated = db.songs.find_one({"id": id})
+        db.api_concerts_songs.update_one({"id": id}, document_song)
+        song_updated = db.api_concerts_songs.find_one({"id": id})
 
         json_song_updated = parse_json(song_updated)
         return jsonify(json_song_updated), 201
@@ -129,10 +141,11 @@ def put_song(id):
 
 @app.route("/song/<int:id>", methods=["DELETE"])
 def del_song(id):
+    """Endpoint to delete a song by its ID."""
     try:
-        document_song = db.songs.find_one({"id": id})
+        document_song = db.api_concerts_songs.find_one({"id": id})
         if document_song != None:
-            db.songs.delete_one({"id": id})
+            db.api_concerts_songs.delete_one({"id": id})
             return {"message": f"id {id} removed"}, 204
         else:
             return {"message": f"id {id} not found"}, 404
