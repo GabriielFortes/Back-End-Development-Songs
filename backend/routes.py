@@ -15,25 +15,25 @@ json_url = os.path.join(SITE_ROOT, "data", "songs.json")
 with open(json_url) as f:
     songs_list: list = json.load(f)
 
-# MongoDB connection, use your own credentials. host.docker.internal > redirects to the host machine from a Docker container.
-mongodb_service = os.environ.get('MONGODB_SERVICE', 'mongodb')
-mongodb_username = os.environ.get('MONGODB_USERNAME', 'admin')
-mongodb_password = os.environ.get('MONGODB_PASSWORD', 'admin')
-mongodb_port = os.environ.get('MONGODB_PORT', '27017')
+# MongoDB connection in .env file
+mongodb_service = os.environ.get("ME_CONFIG_MONGODB_SERVER")
+mongodb_username = os.environ.get("MONGO_INITDB_ROOT_USERNAME")
+mongodb_password = os.environ.get("MONGO_INITDB_ROOT_PASSWORD")
+mongodb_useradmin = os.environ.get("MONGO_INITDB_ROOT_USERNAME")
+mongodb_initial_db = os.environ.get("MONGO_INITDB_DATABASE")
 
-if mongodb_service == None:
-    app.logger.error('Missing MongoDB server in the MONGODB_SERVICE variable')
-    # abort(500, 'Missing MongoDB server in the MONGODB_SERVICE variable')
+if not mongodb_service:
+    app.logger.error('Missing MongoDB server in the ME_CONFIG_MONGODB_SERVER variable')
+    # abort(500, 'Missing MongoDB server in the ME_CONFIG_MONGODB_SERVER variable')
     sys.exit(1)
 
 if mongodb_username and mongodb_password:
-    URL = f"mongodb://{mongodb_username}:{mongodb_password}@{mongodb_service}:{mongodb_port}/api_concerts_songs?authSource=admin"
-    print(f"Using MongoDB user: {mongodb_username}")
-    print(f"MongoDB URL: {URL}")
+    URL = f"mongodb://{mongodb_username}:{mongodb_password}@{mongodb_service}:" \
+        f"27017/{mongodb_initial_db}?authSource={mongodb_useradmin}"
 else:
-    URL = f"mongodb://{mongodb_service}:{mongodb_port}"
-    print(f"Using MongoDB user: {mongodb_username}")
-    print(f"MongoDB URL: {URL}")
+    URL = f"mongodb://{mongodb_service}:27017"
+
+print(f"MongoDB URL: {URL}")
 
 try:
     client = MongoClient(URL, serverSelectionTimeoutMS=5000)
