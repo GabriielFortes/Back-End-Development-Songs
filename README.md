@@ -30,13 +30,13 @@ No manual setup or environment variables needed!
 
 1. Clone the repository:
 
-```bash
+```
 git clone https://github.com/GabriielFortes/Back-End-Development-Songs.git
 cd Back-End-Development-Songs
 ```
 
 2. Run the entire stack with:
-```bash
+```
 docker compose up
 ```
 This command will build and start the backend Flask API, MongoDB, and Mongo Express for database management.
@@ -51,34 +51,38 @@ Reusable fixtures (conftest.py)
 Isolated test environment using test_client
 
 📁 Project Structure
+```
 Back-End-Development-Songs/
-├── app.py # Main Flask application
 ├── backend/
+│ ├── data/
+│ │ └── song.json # Data
 │ ├── init.py # Flask app instance
-│ └── data/
-│ ├── songs.json # Initial data source
 │ └── routes.py # API route definitions
-├── bin/
-│ └── setup.sh # Environment setup script (optional)
 ├── tests/
 │ ├── init.py
 │ ├── conftest.py # Pytest fixtures
 │ └── test_api.py # API test cases
-├── requirements.txt
-├── pytest.ini
+├── .dockerignore
+├── .env
 ├── .gitignore
+├── app.py
+├── docker-compose.yml
+├── Dockerfile
 ├── LICENSE
-└── README.md
+├── pytest.ini
+├── README.md
+└── requirements.txt
+```
 
 ▶️ Running Tests inside the backend container
 After starting the containers, open a terminal inside the backend container:
 
-```bash
+```
 docker exec -it api_concerts_songs sh
 ```
 
 Then run:
-```bash
+```
 pytest
 ```
 
