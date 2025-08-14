@@ -1,59 +1,58 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - .env
     container_name: api_concerts_songs
     ports:
       - "8000:8000"
     environment:
-      - MONGODB_SERVICE=mongodb
-      - MONGODB_USERNAME=admin
-      - MONGODB_PASSWORD=admin
+      - MONGODB_SERVICE=${ME_CONFIG_MONGODB_SERVER}
+      - MONGODB_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGODB_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
       - MONGODB_PORT=27017
     depends_on:
       - mongodb
     networks:
-      - backend-net
+      - backend-net-songs
 
   mongodb:
     image: mongo:7
-    container_name: mongo_db
+    container_name: mongo_db_songs
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=admin
-      - MONGO_INITDB_DATABASE=api_concerts_songs
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
     volumes:
       - mongo-data:/data/db
     networks:
-      - backend-net
+      - backend-net-songs
 
   mongo-express:
     image: mongo-express
-    container_name: mongo_express
+    container_name: mongo_express_songs
     ports:
       - "8081:8081"
     environment:
-      - ME_CONFIG_MONGODB_SERVER=mongodb
-      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_SERVER=${ME_CONFIG_MONGODB_SERVER}
       - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
-      - ME_CONFIG_BASICAUTH_USERNAME=admin
-      - ME_CONFIG_BASICAUTH_PASSWORD=admin
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin
-      - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
+      - ME_CONFIG_BASICAUTH_USERNAME=${ME_CONFIG_BASICAUTH_USERNAME}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_CONFIG_BASICAUTH_PASSWORD}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${ME_CONFIG_MONGODB_ADMINUSERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${ME_CONFIG_MONGODB_ADMINPASSWORD}
+      - ME_CONFIG_MONGODB_AUTH_DATABASE=${ME_CONFIG_MONGODB_AUTH_DATABASE}
     depends_on:
       - mongodb
     networks:
-      - backend-net
+      - backend-net-songs
 
 volumes:
   mongo-data:
 
 networks:
-  backend-net:
+  backend-net-songs:
     driver: bridge
