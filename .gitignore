@@ -4,8 +4,8 @@ Thumbs.db
 .vscode
 
 routes-solution.py
-.env
-.env.json
+# .env
+# .env.json
 lab.md
 
 # Nose
@@ -104,7 +104,7 @@ target/
 celerybeat-schedule
 
 # dotenv
-.env
+# .env
 
 # virtualenv
 .venv
